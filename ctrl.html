@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stellar Forge – Mission Control</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0d0d1a;
+            --main-color: #00e6e6;
+            --accent-color: #ff00ff;
+            --panel-color: rgba(25, 25, 50, 0.8);
+            --text-color: #f0f0f0;
+            --heading-color: #ffcc00;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Space Mono', monospace;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            padding: 2rem;
+            display: grid;
+            gap: 2rem;
+            grid-template-columns: 1fr;
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        header {
+            text-align: center;
+            padding: 3rem 1rem;
+            border-bottom: 2px solid var(--main-color);
+            box-shadow: 0 4px 15px rgba(0, 230, 230, 0.2);
+            position: relative;
+            z-index: 1;
+        }
+
+        header h1 {
+            font-size: clamp(2rem, 5vw, 4rem);
+            color: var(--main-color);
+            text-shadow: 0 0 15px var(--main-color), 0 0 30px var(--accent-color);
+        }
+
+        .section-panel {
+            background-color: var(--panel-color);
+            padding: 2rem;
+            border-radius: 20px;
+            border: 1px solid var(--main-color);
+            box-shadow: 0 0 25px rgba(0, 230, 230, 0.3);
+            backdrop-filter: blur(10px);
+            position: relative;
+        }
+
+        .section-panel h2 {
+            color: var(--heading-color);
+            text-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
+            margin-top: 0;
+        }
+
+        .button {
+            background: linear-gradient(45deg, var(--main-color), var(--accent-color));
+            color: #000;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 50px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 0 15px rgba(0, 230, 230, 0.5);
+        }
+
+        .button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(0, 230, 230, 0.8);
+        }
+
+        .payload-list {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .payload-list li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: color 0.3s;
+        }
+
+        .payload-list li:hover {
+            color: var(--main-color);
+        }
+
+        .payload-list li::before {
+            content: '⚑';
+            color: var(--accent-color);
+            margin-right: 10px;
+            font-size: 1.2em;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+        
+        canvas#starfield {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        footer {
+            text-align: center;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            border-top: 1px dashed var(--main-color);
+            color: rgba(255, 255, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="starfield"></canvas>
+    <header>
+        <h1> Odyssey 1 </h1>
+        <p>A Journey to the Edge of the Solar System</p>
+    </header>
+
+    <main class="container">
+        <div class="section-panel">
+            <h2> Trajectory & Mission Plan</h2>
+            <p>Adjust the mission launch year to see the optimal trajectory for our solar-powered probe.</p>
+            <input type="range" min="2026" max="2045" value="2035" id="launchSlider" oninput="updateLaunch()">
+            <p id="launchInfo">Launch Year: 2036 | Optimal Trajectory Calculated</p>
+            <canvas id="trajectoryCanvas" width="500" height="300"></canvas>
+        </div>
+
+        <div class="section-panel">
+            <h2> Scientific Payload</h2>
+            <p>Our probe is equipped with the latest instruments for interstellar analysis.</p>
+            <ul class="payload-list">
+                <li><span>High-Resolution Imaging Suite </span></li>
+                <li><span>Quantum-Entangled Spectrometer</span></li>
+                <li><span>Cosmic Ray Detector</span></li>
+                <li><span>Micro-Dust Particle Analyzer</span></li>
+            </ul>
+        </div>
+
+        <div class="section-panel full-width">
+            <h2> Simulation:</h2>
+            <p>Observe the probe's journey as it accelerates using its solar sail.</p>
+            <canvas id="journeyCanvas" width="800" height="250"></canvas>
+            <p id="journeyStatus" style="text-align:center; margin-top:1rem;">Status: Awaiting Go/No-Go Call 🔴</p>
+            <div class="controls">
+                <button class="button" onclick="startSimulation()">INITIATE LAUNCH</button>
+                <button class="button" onclick="setSpeed(1)">1x</button>
+                <button class="button" onclick="setSpeed(10)">10x</button>
+                <button class="button" onclick="setSpeed(100)">100x</button>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>Built for Ctrl+Space Hackathon| 2025 Team Lunar Logics!!  </p>
+    </footer>
+
+    <script>
+        // --- Starfield Animation ---
+        const starfield = document.getElementById('starfield');
+        const starCtx = starfield.getContext('2d');
+        const stars = [];
+        const numStars = 500;
+        let mouseX = 0, mouseY = 0;
+
+        starfield.width = window.innerWidth;
+        starfield.height = window.innerHeight;
+
+        for (let i = 0; i < numStars; i++) {
+            stars.push({
+                x: Math.random() * starfield.width,
+                y: Math.random() * starfield.height,
+                size: Math.random() * 2,
+                speed: Math.random() * 0.1 + 0.05,
+                opacity: Math.random()
+            });
+        }
+
+        function animateStars() {
+            starCtx.clearRect(0, 0, starfield.width, starfield.height);
+            starCtx.fillStyle = '#f0f0f0';
+            stars.forEach(star => {
+                starCtx.beginPath();
+                starCtx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                starCtx.globalAlpha = star.opacity;
+                starCtx.fill();
+                star.opacity += (Math.random() - 0.5) * 0.02;
+                if (star.opacity > 1) star.opacity = 1;
+                if (star.opacity < 0) star.opacity = 0;
+            });
+            requestAnimationFrame(animateStars);
+        }
+
+        // --- Trajectory Canvas ---
+        const launchSlider = document.getElementById("launchSlider");
+        const launchInfo = document.getElementById("launchInfo");
+        const trajCanvas = document.getElementById("trajectoryCanvas");
+        const trajCtx = trajCanvas.getContext("2d");
+
+        function drawTrajectory(year) {
+            trajCtx.clearRect(0, 0, trajCanvas.width, trajCanvas.height);
+            const centerX = trajCanvas.width / 2;
+            const centerY = trajCanvas.height / 2;
+
+            // Draw planets with a glow
+            trajCtx.shadowBlur = 15;
+            trajCtx.shadowColor = 'lightblue';
+            trajCtx.fillStyle = "lightblue";
+            trajCtx.beginPath();
+            trajCtx.arc(centerX - 150, centerY, 15, 0, Math.PI * 2);
+            trajCtx.fill();
+            trajCtx.fillText("🌍 Earth", centerX - 180, centerY + 30);
+
+            trajCtx.shadowColor = 'lightgreen';
+            trajCtx.fillStyle = "lightgreen";
+            trajCtx.beginPath();
+            trajCtx.arc(centerX + 150, centerY, 15, 0, Math.PI * 2);
+            trajCtx.fill();
+            trajCtx.fillText("☄️ Target", centerX + 120, centerY + 30);
+
+            trajCtx.shadowBlur = 0;
+
+            // Animated trajectory with glowing effect
+            const gradient = trajCtx.createLinearGradient(0, 0, trajCanvas.width, 0);
+            gradient.addColorStop(0, '#00e6e6');
+            gradient.addColorStop(1, '#ff00ff');
+            trajCtx.strokeStyle = gradient;
+            trajCtx.lineWidth = 2;
+            trajCtx.shadowBlur = 10;
+            trajCtx.shadowColor = 'cyan';
+            
+            trajCtx.beginPath();
+            trajCtx.moveTo(centerX - 135, centerY);
+            // Dynamic control points based on year
+            trajCtx.quadraticCurveTo(
+                centerX, 
+                centerY - (year - 2035) * 5, 
+                centerX + 135, 
+                centerY
+            );
+            trajCtx.stroke();
+            trajCtx.shadowBlur = 0;
+        }
+
+        function updateLaunch() {
+            let year = launchSlider.value;
+            launchInfo.textContent = `Launch Year: ${year} | Optimal Trajectory Calculated`;
+            drawTrajectory(year);
+        }
+
+        // --- Journey Canvas Simulation ---
+        const journeyCanvas = document.getElementById("journeyCanvas");
+        const jCtx = journeyCanvas.getContext("2d");
+        let shipX = 50, shipY = 125;
+        let simulationSpeed = 1;
+        let animation;
+
+        function startSimulation() {
+            cancelAnimationFrame(animation);
+            shipX = 50;
+            document.getElementById("journeyStatus").textContent = "Status: Solar Sail Deployed ☀️ Interstellar Journey Initiated!";
+            animateJourney();
+        }
+
+        function animateJourney() {
+            jCtx.clearRect(0, 0, journeyCanvas.width, journeyCanvas.height);
+            
+            // Draw Sun
+            jCtx.fillStyle = "yellow";
+            jCtx.shadowBlur = 20;
+            jCtx.shadowColor = "yellow";
+            jCtx.beginPath();
+            jCtx.arc(50, 125, 40, 0, Math.PI * 2);
+            jCtx.fill();
+            jCtx.shadowBlur = 0;
+            jCtx.fillStyle = "white";
+            jCtx.fillText("☀️ Sun", 30, 80);
+
+            // Draw Ship
+            jCtx.fillStyle = "white";
+            jCtx.shadowBlur = 10;
+            jCtx.shadowColor = "cyan";
+            jCtx.beginPath();
+            jCtx.moveTo(shipX, shipY);
+            jCtx.lineTo(shipX + 25, shipY + 5);
+            jCtx.lineTo(shipX, shipY + 10);
+            jCtx.closePath();
+            jCtx.fill();
+            jCtx.shadowBlur = 0;
+
+            // Solar Sail (triangle behind ship)
+            jCtx.fillStyle = "rgba(0, 230, 230, 0.6)";
+            jCtx.beginPath();
+            jCtx.moveTo(shipX - 10, shipY - 15);
+            jCtx.lineTo(shipX - 10, shipY + 25);
+            jCtx.lineTo(shipX - 40, shipY + 5);
+            jCtx.closePath();
+            jCtx.fill();
+
+            jCtx.fillStyle = "white";
+            jCtx.fillText("🚀 Probe", shipX + 15, shipY - 10);
+
+            // Update ship position
+            const totalDistance = journeyCanvas.width - 100;
+            const progress = (shipX - 50) / totalDistance;
+            const curveOffset = Math.sin(progress * Math.PI) * 50; // A smooth curve
+            
+            shipX += 1 * simulationSpeed;
+            shipY = 125 + curveOffset;
+
+            if (shipX < journeyCanvas.width - 50) {
+                animation = requestAnimationFrame(animateJourney);
+            } else {
+                document.getElementById("journeyStatus").textContent = "Status: Target Intercept Achieved  Mission Success!";
+            }
+        }
+
+        function setSpeed(speed) {
+            simulationSpeed = speed;
+            if (animation) {
+                cancelAnimationFrame(animation);
+                animateJourney();
+            }
+        }
+
+        // Initial draw calls
+        updateLaunch();
+        animateStars();
+    </script>
+</body>
+</html>
